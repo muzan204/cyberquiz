@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ENEM CyberQuiz - Plataforma interativa de estudos com questões do ENEM em formato de quiz gamificado">
+    <meta name="keywords" content="ENEM, quiz, estudos, educação, gamificação, questões, simulado">
+    <meta name="author" content="Gustavo Belchior">
+    <meta name="theme-color" content="#0a0a0f">
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="ENEM CyberQuiz - Estude de Forma Gamificada">
+    <meta property="og:description" content="Plataforma cyberpunk de estudos para o ENEM com sistema de pontuação, conquistas e ranking.">
+    
+    <title>ENEM CyberQuiz - Plataforma Gamificada de Estudos</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+</head>
+<body>
+    <!-- Skip to main content for accessibility -->
+    <a href="#main-content" class="skip-link">Pular para o conteúdo principal</a>
+
+    <div class="cyber-container">
+        <!-- Header -->
+        <header class="cyber-header" role="banner">
+            <div class="logo" aria-label="ENEM CyberQuiz Logo">
+                <span class="logo-text">ENEM</span>
+                <span class="logo-subtitle">CYBER QUIZ</span>
+            </div>
+            
+            <div class="header-stats" role="status" aria-label="Estatísticas do jogador">
+                <div class="stat-item">
+                    <span class="stat-label">PONTOS</span>
+                    <span class="stat-value" id="score" aria-live="polite">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">SEQUÊNCIA</span>
+                    <span class="stat-value" id="streak" aria-live="polite">0x</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">PRECISÃO</span>
+                    <span class="stat-value" id="accuracy" aria-live="polite">0%</span>
+                </div>
+                <div class="stat-item" id="lives-display" aria-label="Vidas restantes">
+                    <span class="stat-label">VIDAS</span>
+                    <span class="stat-value">❤️❤️❤️</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">NÍVEL</span>
+                    <span class="stat-value" id="level-display">Nível 1</span>
+                </div>
+            </div>
+
+            <div class="header-controls">
+                <button id="audio-toggle" class="audio-btn" aria-label="Alternar som" title="Alternar som">🔊</button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+            <!-- Main Menu Screen -->
+            <section id="main-menu" class="screen active" role="region" aria-label="Menu Principal">
+                <div class="menu-content">
+                    <h1 class="menu-title">SISTEMA DE AVALIAÇÃO ENEM</h1>
+                    <p class="menu-subtitle">Selecione uma área do conhecimento para iniciar o protocolo de teste</p>
+                    
+                    <div class="subject-grid" role="list">
+                        <button class="subject-btn" data-subject="linguagens" role="listitem" aria-label="Iniciar quiz de Linguagens">
+                            <div class="subject-icon" aria-hidden="true">📡</div>
+                            <div class="subject-name">LINGUAGENS</div>
+                            <div class="subject-desc">Português, Literatura, Artes, Educação Física, Inglês/Espanhol</div>
+                        </button>
+                        
+                        <button class="subject-btn" data-subject="matematica" role="listitem" aria-label="Iniciar quiz de Matemática">
+                            <div class="subject-icon" aria-hidden="true">🔢</div>
+                            <div class="subject-name">MATEMÁTICA</div>
+                            <div class="subject-desc">Álgebra, Geometria, Estatística, Funções</div>
+                        </button>
+                        
+                        <button class="subject-btn" data-subject="natureza" role="listitem" aria-label="Iniciar quiz de Ciências da Natureza">
+                            <div class="subject-icon" aria-hidden="true">⚡</div>
+                            <div class="subject-name">CIÊNCIAS DA NATUREZA</div>
+                            <div class="subject-desc">Biologia, Física, Química</div>
+                        </button>
+                        
+                        <button class="subject-btn" data-subject="humanas" role="listitem" aria-label="Iniciar quiz de Ciências Humanas">
+                            <div class="subject-icon" aria-hidden="true">🌐</div>
+                            <div class="subject-name">CIÊNCIAS HUMANAS</div>
+                            <div class="subject-desc">História, Geografia, Filosofia, Sociologia</div>
+                        </button>
+                        
+                        <button class="subject-btn" data-subject="geral" role="listitem" aria-label="Iniciar simulado geral">
+                            <div class="subject-icon" aria-hidden="true">🎯</div>
+                            <div class="subject-name">SIMULADO GERAL</div>
+                            <div class="subject-desc">Todas as áreas - Experiência completa ENEM</div>
+                        </button>
+                    </div>
+
+                    <!-- Ranking Section -->
+                    <div class="ranking-section" aria-label="Ranking de jogadores">
+                        <div id="ranking-container" class="ranking-container">
+                            <!-- Ranking will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Achievements Section -->
+                    <div class="achievements-section" aria-label="Conquistas">
+                        <div id="achievements-container" class="achievements-container">
+                            <!-- Achievements will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Quiz Screen -->
+            <section id="quiz-screen" class="screen" role="region" aria-label="Área do Quiz" aria-live="polite">
+                <div class="quiz-header">
+                    <div class="progress-container">
+                        <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <div class="progress-text">
+                            <span id="current-question">1</span> / <span id="total-questions">10</span>
+                        </div>
+                    </div>
+                    <div class="timer-container" aria-label="Tempo decorrido">
+                        <div class="timer" id="timer">
+                            <span class="timer-icon" aria-hidden="true">⏱</span>
+                            <span class="timer-value">00:00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="question-container">
+                    <div class="question-header">
+                        <span class="question-number" id="question-number">QUESTÃO 01</span>
+                        <span class="subject-tag" id="subject-tag">LINGUAGENS</span>
+                    </div>
+                    
+                    <div class="question-text" id="question-text">
+                        <!-- Question will be inserted here -->
+                    </div>
+
+                    <div class="options-container" id="options-container" role="group" aria-label="Opções de resposta">
+                        <!-- Options will be inserted here -->
+                    </div>
+
+                    <div class="explanation-container" id="explanation-container" style="display: none;" role="complementary" aria-label="Explicação da resposta">
+                        <div class="explanation-header">
+                            <span class="explanation-icon" aria-hidden="true">💡</span>
+                            <span class="explanation-title">EXPLICAÇÃO</span>
+                        </div>
+                        <div class="explanation-text" id="explanation-text">
+                            <!-- Explanation will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quiz-controls">
+                    <button class="cyber-btn" id="next-btn" style="display: none;" aria-label="Próxima questão">
+                        <span>PRÓXIMA QUESTÃO</span>
+                        <span class="btn-icon" aria-hidden="true">→</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Results Screen -->
+            <section id="results-screen" class="screen" role="region" aria-label="Resultados">
+                <div class="results-content">
+                    <div class="results-header">
+                        <h2 class="results-title">PROTOCOLO DE AVALIAÇÃO CONCLUÍDO</h2>
+                        <div class="results-grade" id="results-grade" aria-label="Nota final">A+</div>
+                    </div>
+
+                    <div class="results-stats">
+                        <div class="results-stat">
+                            <div class="stat-icon" aria-hidden="true">✓</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="correct-answers">0</span>
+                                <span class="stat-label">RESPOSTAS CORRETAS</span>
+                            </div>
+                        </div>
+                        
+                        <div class="results-stat">
+                            <div class="stat-icon" aria-hidden="true">✗</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="wrong-answers">0</span>
+                                <span class="stat-label">RESPOSTAS INCORRETAS</span>
+                            </div>
+                        </div>
+                        
+                        <div class="results-stat">
+                            <div class="stat-icon" aria-hidden="true">⚡</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="final-score">0</span>
+                                <span class="stat-label">PONTUAÇÃO TOTAL</span>
+                            </div>
+                        </div>
+                        
+                        <div class="results-stat">
+                            <div class="stat-icon" aria-hidden="true">🎯</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="final-accuracy">0%</span>
+                                <span class="stat-label">PRECISÃO</span>
+                            </div>
+                        </div>
+                        
+                        <div class="results-stat">
+                            <div class="stat-icon" aria-hidden="true">🔥</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="max-streak">0x</span>
+                                <span class="stat-label">MÁXIMA SEQUÊNCIA</span>
+                            </div>
+                        </div>
+                        
+                        <div class="results-stat">
+                            <div class="stat-icon" aria-hidden="true">⏱</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="total-time">00:00</span>
+                                <span class="stat-label">TEMPO TOTAL</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="results-breakdown" id="results-breakdown">
+                        <!-- Subject breakdown will be inserted here -->
+                    </div>
+
+                    <div class="results-controls">
+                        <button class="cyber-btn" id="review-btn" aria-label="Revisar respostas">
+                            <span>REVISAR RESPOSTAS</span>
+                        </button>
+                        <button class="cyber-btn secondary" id="restart-btn" aria-label="Novo simulado">
+                            <span>NOVO SIMULADO</span>
+                        </button>
+                        <button class="cyber-btn" id="menu-btn" aria-label="Voltar ao menu">
+                            <span>VOLTAR AO MENU</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Review Screen -->
+            <section id="review-screen" class="screen" role="region" aria-label="Revisão de Respostas">
+                <div class="review-content">
+                    <h2 class="review-title">REVISÃO DE RESPOSTAS</h2>
+                    <div class="review-list" id="review-list">
+                        <!-- Review items will be inserted here -->
+                    </div>
+                    <button class="cyber-btn" id="back-to-results" aria-label="Voltar aos resultados">
+                        <span>VOLTAR AOS RESULTADOS</span>
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="cyber-footer" role="contentinfo">
+            <p>ENEM CyberQuiz v3.0 | Desenvolvido por Gustavo Belchior</p>
+            <p class="footer-note">Estude de forma gamificada e conquiste seu futuro! 🚀</p>
+        </footer>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" aria-live="assertive"></div>
+
+    <!-- Scripts -->
+    <script src="questions.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

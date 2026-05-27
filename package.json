@@ -1,0 +1,57 @@
+{
+  "name": "cyberquiz",
+  "version": "3.0.0",
+  "description": "ENEM CyberQuiz - Plataforma Gamificada de Estudos com tema Cyberpunk",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "node server.js",
+    "client": "live-server --port=8080",
+    "seed": "node seed.js",
+    "test": "echo \"No tests configured yet\"",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{js,json,md}\""
+  },
+  "keywords": [
+    "enem",
+    "quiz",
+    "cyberpunk",
+    "mongodb",
+    "education",
+    "nodejs",
+    "gamification",
+    "estudos",
+    "simulado"
+  ],
+  "author": {
+    "name": "Gustavo Belchior",
+    "email": "contato@exemplo.com",
+    "url": "https://github.com/seu-usuario"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/muzan204/cyberquiz.git"
+  },
+  "bugs": {
+    "url": "https://github.com/muzan204/cyberquiz/issues"
+  },
+  "homepage": "https://github.com/muzan204/cyberquiz#readme",
+  "dependencies": {
+    "concurrently": "^9.2.1",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "live-server": "^1.2.2",
+    "mongoose": "^9.6.2"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
