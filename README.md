@@ -28,8 +28,7 @@ O **ENEM CyberQuiz** é uma plataforma gamificada de estudos para o ENEM com tem
 ### Backend
 - **Node.js** - Runtime JavaScript
 - **Express.js** - Framework web
-- **MongoDB** - Banco de dados
-- **Mongoose** - ODM para MongoDB
+- **Arquivos locais** - Perguntas em `questions.js` e ranking em `data/scores.json`
 
 ### Frontend
 - **HTML5** - Estrutura semântica
@@ -41,7 +40,6 @@ O **ENEM CyberQuiz** é uma plataforma gamificada de estudos para o ENEM com tem
 
 - **Node.js** >= 18.0.0
 - **npm** >= 9.0.0
-- **MongoDB Atlas** (conta gratuita) ou MongoDB local
 
 ## 🔧 Instalação
 
@@ -58,46 +56,27 @@ cd cyberquiz
 npm install
 ```
 
-### 3. Configure as variáveis de ambiente
+### 3. Inicie a aplicação
 
-1. Renomeie o arquivo `.env.example` para `.env` (ou edite o `.env` existente)
-2. Obtenha sua connection string do MongoDB Atlas:
-   - Crie uma conta em [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-   - Crie um cluster gratuito
-   - Clique em "Connect" → "Connect your application"
-   - Copie a connection string
-3. Substitua `SEU_USUARIO` e `SUA_SENHA` na string de conexão
-
-```env
-MONGO_URI=mongodb+srv://SEU_USUARIO:SUA_SENHA@cluster0.xxxxx.mongodb.net/cyberquiz?retryWrites=true&w=majority
-```
-
-### 4. Inicie a aplicação
-
-#### Modo desenvolvimento (backend + frontend):
-```bash
-npm run dev
-```
-
-#### Apenas backend:
-```bash
-npm run server
-```
-
-#### Apenas frontend:
-```bash
-npm run client
-```
-
-#### Produção:
+#### Backend + frontend:
 ```bash
 npm start
 ```
 
+#### Desenvolvimento:
+```bash
+npm run dev
+```
+
+#### Verificar perguntas locais:
+```bash
+npm run seed
+```
+
 ## 🌐 Acessando a Aplicação
 
-- **Frontend**: http://localhost:8080
-- **Backend API**: http://localhost:3000
+- **Aplicação**: http://localhost:3000
+- **Backend API**: http://localhost:3000/api
 - **Health Check**: http://localhost:3000/health
 
 ## 📚 Estrutura do Projeto
@@ -109,8 +88,8 @@ cyberquiz/
 ├── index.html          # Página principal
 ├── styles.css          # Estilos CSS
 ├── questions.js        # Banco de questões (local)
+├── data/scores.json    # Ranking local (criado automaticamente)
 ├── package.json        # Dependências e scripts
-├── .env                # Variáveis de ambiente
 ├── .gitignore          # Arquivos ignorados pelo Git
 └── README.md           # Esta documentação
 ```

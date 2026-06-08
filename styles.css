@@ -16,10 +16,10 @@
     --neon-red: #ff0040;
     
     /* Background Colors */
-    --bg-dark: #0a0a0f;
-    --bg-medium: #12121a;
-    --bg-card: #1a1a2e;
-    --bg-card-hover: #222240;
+    --bg-dark: #07080d;
+    --bg-medium: #10131c;
+    --bg-card: #171b27;
+    --bg-card-hover: #202738;
     --bg-overlay: rgba(10, 10, 15, 0.95);
     
     /* Text Colors */
@@ -41,7 +41,7 @@
     --shadow-neon-blue: 0 0 10px rgba(0, 240, 255, 0.3), 0 0 20px rgba(0, 240, 255, 0.1);
     --shadow-neon-pink: 0 0 10px rgba(255, 45, 123, 0.3), 0 0 20px rgba(255, 45, 123, 0.1);
     --shadow-neon-purple: 0 0 10px rgba(184, 41, 221, 0.3), 0 0 20px rgba(184, 41, 221, 0.1);
-    --shadow-card: 0 4px 6px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 240, 255, 0.05);
+    --shadow-card: 0 16px 45px rgba(0, 0, 0, 0.28), 0 0 20px rgba(0, 240, 255, 0.04);
     
     /* Transitions */
     --transition-fast: 0.15s ease;
@@ -49,10 +49,10 @@
     --transition-slow: 0.5s ease;
     
     /* Border Radius */
-    --radius-sm: 5px;
-    --radius-md: 10px;
-    --radius-lg: 15px;
-    --radius-xl: 20px;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 8px;
 }
 
 /* ============================================
@@ -71,7 +71,10 @@ html {
 
 body {
     font-family: var(--font-body);
-    background: var(--bg-dark);
+    background:
+        linear-gradient(135deg, rgba(255, 45, 123, 0.08), transparent 28%),
+        linear-gradient(225deg, rgba(57, 255, 20, 0.04), transparent 30%),
+        var(--bg-dark);
     color: var(--text-primary);
     min-height: 100vh;
     overflow-x: hidden;
@@ -103,7 +106,7 @@ body {
    ANIMATED BACKGROUNDS
    ============================================ */
 
-/* Gradient orbs background */
+/* Ambient scanline glow */
 body::before {
     content: '';
     position: fixed;
@@ -111,13 +114,13 @@ body::before {
     left: 0;
     width: 100%;
     height: 100%;
-    background: 
-        radial-gradient(ellipse at 20% 50%, rgba(0, 240, 255, 0.08) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 20%, rgba(184, 41, 221, 0.08) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 80%, rgba(255, 45, 123, 0.08) 0%, transparent 50%);
+    background:
+        linear-gradient(180deg, transparent 0%, rgba(0, 240, 255, 0.035) 48%, transparent 50%),
+        linear-gradient(90deg, rgba(255, 45, 123, 0.05), transparent 34%, rgba(0, 240, 255, 0.04));
+    background-size: 100% 140px, 100% 100%;
     pointer-events: none;
     z-index: 0;
-    animation: bgPulse 8s ease-in-out infinite alternate;
+    animation: bgPulse 10s ease-in-out infinite alternate;
 }
 
 @keyframes bgPulse {
@@ -165,6 +168,10 @@ body::after {
 
 .screen.active {
     display: block;
+}
+
+.is-hidden {
+    display: none;
 }
 
 @keyframes fadeIn {
@@ -422,6 +429,20 @@ body::after {
     position: relative;
     z-index: 1;
     line-height: 1.4;
+}
+
+.section-heading {
+    color: var(--neon-blue);
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+}
+
+.empty-state {
+    color: var(--text-secondary);
+    padding: 20px;
+    text-align: center;
 }
 
 /* ============================================
@@ -1067,10 +1088,28 @@ body::after {
     overflow: hidden;
 }
 
+.breakdown-meter {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .breakdown-fill {
     height: 100%;
     border-radius: 4px;
     transition: width 1s ease;
+}
+
+.breakdown-good .breakdown-fill {
+    background: var(--neon-green);
+}
+
+.breakdown-warn .breakdown-fill {
+    background: var(--neon-yellow);
+}
+
+.breakdown-bad .breakdown-fill {
+    background: var(--neon-pink);
 }
 
 .breakdown-score {
@@ -1079,6 +1118,18 @@ body::after {
     font-weight: 600;
     min-width: 70px;
     text-align: right;
+}
+
+.breakdown-good .breakdown-score {
+    color: var(--neon-green);
+}
+
+.breakdown-warn .breakdown-score {
+    color: var(--neon-yellow);
+}
+
+.breakdown-bad .breakdown-score {
+    color: var(--neon-pink);
 }
 
 .results-controls {
@@ -1261,6 +1312,12 @@ body::after {
     border-top: 4px solid var(--neon-blue);
     border-radius: 50%;
     animation: spin 1s linear infinite;
+}
+
+.loading-text {
+    color: var(--neon-blue);
+    font-family: var(--font-display);
+    margin-top: 20px;
 }
 
 @keyframes spin {
@@ -1460,6 +1517,121 @@ body::after {
 }
 
 /* ============================================
+   POLISHED PRODUCT PASS
+   ============================================ */
+.cyber-header,
+.quiz-header,
+.question-container,
+.ranking-container,
+.achievements-container,
+.results-stat,
+.review-item,
+.breakdown-item {
+    background: rgba(23, 27, 39, 0.88);
+    border-color: rgba(128, 146, 190, 0.18);
+    box-shadow: var(--shadow-card);
+    backdrop-filter: blur(16px);
+}
+
+.cyber-header {
+    align-items: stretch;
+    padding: 18px;
+}
+
+.logo {
+    justify-content: center;
+    padding: 4px 8px;
+}
+
+.header-stats {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(86px, 1fr));
+    gap: 10px;
+}
+
+.stat-item {
+    min-width: 0;
+    justify-content: center;
+    background: rgba(7, 8, 13, 0.42);
+}
+
+.menu-content {
+    padding-top: 12px;
+}
+
+.menu-title {
+    max-width: 880px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.subject-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.subject-btn {
+    min-height: 196px;
+    justify-content: center;
+    border-color: rgba(128, 146, 190, 0.2);
+}
+
+.subject-btn:hover {
+    transform: translateY(-3px);
+}
+
+.subject-icon {
+    line-height: 1;
+}
+
+.question-container {
+    padding: 30px;
+}
+
+.question-text,
+.options-container {
+    max-width: 880px;
+}
+
+.option-btn {
+    min-height: 72px;
+}
+
+.cyber-btn,
+.audio-btn,
+.option-btn,
+.subject-btn {
+    outline-offset: 3px;
+}
+
+.cyber-btn:focus-visible,
+.audio-btn:focus-visible,
+.option-btn:focus-visible,
+.subject-btn:focus-visible {
+    outline: 2px solid var(--neon-yellow);
+}
+
+.ranking-section,
+.achievements-section {
+    max-width: 900px;
+    width: 100%;
+}
+
+.ranking-container,
+.achievements-container {
+    padding: 18px;
+}
+
+.results-content,
+.review-content {
+    width: min(100%, 940px);
+}
+
+.review-list {
+    padding: 2px 8px 2px 2px;
+}
+
+/* ============================================
    RESPONSIVE DESIGN
    ============================================ */
 @media (max-width: 768px) {
@@ -1483,7 +1655,9 @@ body::after {
     }
 
     .header-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 10px;
+        width: 100%;
     }
 
     .stat-item {

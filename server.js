@@ -1,686 +1,257 @@
 // ============================================
-// ENEM CyberQuiz API - Version 3.0
-// Backend robusto e organizado
+// ENEM CyberQuiz API - local backend
 // ============================================
 
-require('dotenv').config();
-
+const fs = require('fs/promises');
+const path = require('path');
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
+const { questionsBank } = require('./questions.js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const DATA_DIR = path.join(__dirname, 'data');
+const SCORES_FILE = path.join(DATA_DIR, 'scores.json');
+const SUBJECTS = ['linguagens', 'matematica', 'natureza', 'humanas'];
 
-// ============================================
-// CONFIG
-// ============================================
+app.use(cors());
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(express.static(__dirname));
 
-const MONGO_URI = process.env.MONGO_URI;
-
-if (!MONGO_URI) {
-    console.error('❌ ERRO: MONGO_URI não configurada no arquivo .env');
-    console.error('📝 Configure sua conexão MongoDB antes de iniciar.');
-    process.exit(1);
-}
-
-// ============================================
-// MIDDLEWARES
-// ============================================
-
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Request logging middleware
 app.use((req, res, next) => {
-    const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] ${req.method} ${req.url}`);
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
     next();
 });
 
-// ============================================
-// DATABASE CONNECTION
-// ============================================
+function getAllQuestions() {
+    return SUBJECTS.flatMap(subject => questionsBank[subject] || []);
+}
 
-let dbConnected = false;
-
-mongoose.connect(MONGO_URI, {
-    serverSelectionTimeoutMS: 5000,
-    socketTimeoutMS: 45000,
-})
-.then(() => {
-    dbConnected = true;
-    console.log('=================================');
-    console.log('✅ MongoDB conectado com sucesso');
-    console.log('🚀 CyberQuiz API v3.0 Online');
-    console.log('=================================');
-})
-.catch((err) => {
-    console.error('=================================');
-    console.error('❌ ERRO NA CONEXÃO COM MONGODB');
-    console.error(err.message);
-    console.error('=================================');
-});
-
-// ============================================
-// SCHEMAS
-// ============================================
-
-const ScoreSchema = new mongoose.Schema({
-    nome: {
-        type: String,
-        required: [true, 'Nome é obrigatório'],
-        trim: true,
-        minlength: [2, 'Nome deve ter pelo menos 2 caracteres'],
-        maxlength: [50, 'Nome deve ter no máximo 50 caracteres']
-    },
-    score: {
-        type: Number,
-        default: 0,
-        min: [0, 'Score não pode ser negativo']
-    },
-    accuracy: {
-        type: Number,
-        default: 0,
-        min: [0, 'Precisão não pode ser negativa'],
-        max: [100, 'Precisão não pode ultrapassar 100%']
-    },
-    level: {
-        type: Number,
-        default: 1,
-        min: [1, 'Nível mínimo é 1']
-    },
-    xp: {
-        type: Number,
-        default: 0,
-        min: [0, 'XP não pode ser negativo']
-    },
-    coins: {
-        type: Number,
-        default: 0,
-        min: [0, 'Coins não podem ser negativos']
-    },
-    streak: {
-        type: Number,
-        default: 0,
-        min: [0, 'Streak não pode ser negativo']
-    },
-    time: {
-        type: Number,
-        default: 0,
-        min: [0, 'Tempo não pode ser negativo']
-    },
-    subject: {
-        type: String,
-        default: 'geral'
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now,
-        expires: '365d' // Auto-delete após 1 ano
+function getQuestionsBySubject(subject) {
+    if (subject === 'geral') {
+        return getAllQuestions();
     }
-});
 
-const QuestionSchema = new mongoose.Schema({
-    subject: {
-        type: String,
-        required: [true, 'Matéria é obrigatória'],
-        trim: true,
-        enum: {
-            values: ['linguagens', 'matematica', 'natureza', 'humanas', 'geral'],
-            message: 'Matéria inválida. Use: linguagens, matematica, natureza, humanas ou geral'
-        }
-    },
-    difficulty: {
-        type: String,
-        default: 'normal',
-        enum: {
-            values: ['easy', 'normal', 'hard'],
-            message: 'Dificuldade inválida. Use: easy, normal ou hard'
-        }
-    },
-    question: {
-        type: String,
-        required: [true, 'Pergunta é obrigatória'],
-        trim: true,
-        minlength: [10, 'Pergunta deve ter pelo menos 10 caracteres']
-    },
-    options: {
-        type: [String],
-        required: [true, 'Opções são obrigatórias'],
-        validate: {
-            validator: function(v) {
-                return v.length >= 2 && v.length <= 5;
-            },
-            message: 'Pergunta deve ter entre 2 e 5 opções'
-        }
-    },
-    correct: {
-        type: Number,
-        required: [true, 'Resposta correta é obrigatória'],
-        min: [0, 'Índice inválido'],
-        validate: {
-            validator: function(v) {
-                return Number.isInteger(v);
-            },
-            message: 'Resposta correta deve ser um número inteiro'
-        }
-    },
-    explanation: {
-        type: String,
-        default: '',
-        trim: true
-    },
-    tags: {
-        type: [String],
-        default: []
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
+    return questionsBank[subject] || [];
+}
+
+function shuffleArray(items) {
+    const shuffled = [...items];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-});
+    return shuffled;
+}
 
-const UserSchema = new mongoose.Schema({
-    username: {
-        type: String,
-        required: [true, 'Nome de usuário é obrigatório'],
-        unique: true,
-        trim: true,
-        minlength: [3, 'Usuário deve ter pelo menos 3 caracteres'],
-        maxlength: [30, 'Usuário deve ter no máximo 30 caracteres']
-    },
-    totalScore: {
-        type: Number,
-        default: 0,
-        min: [0, 'Score não pode ser negativo']
-    },
-    level: {
-        type: Number,
-        default: 1,
-        min: [1, 'Nível mínimo é 1']
-    },
-    xp: {
-        type: Number,
-        default: 0,
-        min: [0, 'XP não pode ser negativo']
-    },
-    gamesPlayed: {
-        type: Number,
-        default: 0
-    },
-    bestScore: {
-        type: Number,
-        default: 0
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now
-    },
-    lastPlayed: {
-        type: Date,
-        default: Date.now
+function sanitizeScorePayload(body) {
+    const nome = String(body.nome || 'Player').trim().slice(0, 50) || 'Player';
+
+    return {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        nome,
+        score: Math.max(0, Number(body.score) || 0),
+        accuracy: Math.min(100, Math.max(0, Number(body.accuracy) || 0)),
+        level: Math.max(1, Number(body.level) || 1),
+        xp: Math.max(0, Number(body.xp) || 0),
+        coins: Math.max(0, Number(body.coins) || 0),
+        streak: Math.max(0, Number(body.streak) || 0),
+        time: Math.max(0, Number(body.time) || 0),
+        subject: SUBJECTS.includes(body.subject) ? body.subject : 'geral',
+        createdAt: new Date().toISOString()
+    };
+}
+
+async function readScores() {
+    try {
+        const content = await fs.readFile(SCORES_FILE, 'utf8');
+        const scores = JSON.parse(content);
+        return Array.isArray(scores) ? scores : [];
+    } catch (err) {
+        if (err.code === 'ENOENT') {
+            return [];
+        }
+        throw err;
     }
-});
+}
 
-// ============================================
-// MODELS
-// ============================================
+async function writeScores(scores) {
+    await fs.mkdir(DATA_DIR, { recursive: true });
+    await fs.writeFile(SCORES_FILE, `${JSON.stringify(scores, null, 2)}\n`, 'utf8');
+}
 
-const Score = mongoose.model('Score', ScoreSchema);
-const Question = mongoose.model('Question', QuestionSchema);
-const User = mongoose.model('User', UserSchema);
+function sortRanking(scores) {
+    return [...scores].sort((a, b) => (
+        (b.score || 0) - (a.score || 0)
+        || (b.accuracy || 0) - (a.accuracy || 0)
+        || (a.time || 0) - (b.time || 0)
+    ));
+}
 
-// ============================================
-// ROUTES
-// ============================================
-
-// Home Route
-app.get('/', (req, res) => {
+app.get('/api', (req, res) => {
     res.json({
         status: 'online',
-        message: '🚀 CyberQuiz API v3.0',
-        version: '3.0.0',
+        storage: 'local',
+        message: 'CyberQuiz API local',
         endpoints: {
+            app: 'GET /',
             health: 'GET /health',
             questions: 'GET /questions/:subject',
             random: 'GET /random/:subject',
             ranking: 'GET /ranking',
             stats: 'GET /stats',
             saveScore: 'POST /save-score',
-            addQuestion: 'POST /add-question',
-            updateQuestion: 'PUT /update-question/:id',
-            deleteQuestion: 'DELETE /delete-question/:id'
+            user: 'GET /user/:username'
         }
     });
 });
 
-// Health Check
 app.get('/health', (req, res) => {
     res.json({
-        status: dbConnected ? 'healthy' : 'degraded',
-        database: dbConnected ? 'connected' : 'disconnected',
+        status: 'healthy',
+        database: 'local files',
         uptime: process.uptime(),
         timestamp: new Date().toISOString()
     });
 });
 
-// SAVE SCORE
-app.post('/save-score', async (req, res) => {
+app.get('/questions/:subject', (req, res) => {
+    const subject = req.params.subject;
+    const difficulty = req.query.difficulty;
+    let questions = getQuestionsBySubject(subject);
+
+    if (difficulty) {
+        questions = questions.filter(question => question.difficulty === difficulty);
+    }
+
+    res.json({
+        success: true,
+        total: questions.length,
+        data: questions
+    });
+});
+
+app.get('/random/:subject', (req, res) => {
+    const subject = req.params.subject;
+    const difficulty = req.query.difficulty;
+    const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 50);
+    let questions = getQuestionsBySubject(subject);
+
+    if (difficulty) {
+        questions = questions.filter(question => question.difficulty === difficulty);
+    }
+
+    const randomQuestions = shuffleArray(questions).slice(0, limit);
+
+    res.json({
+        success: true,
+        total: randomQuestions.length,
+        data: randomQuestions
+    });
+});
+
+app.post('/save-score', async (req, res, next) => {
     try {
-        const { nome, score, accuracy, level, xp, coins, streak, time, subject } = req.body;
-
-        // Validações básicas
-        if (!nome || typeof nome !== 'string') {
-            return res.status(400).json({
-                success: false,
-                error: 'Nome inválido ou ausente'
-            });
-        }
-
-        const novoScore = new Score({
-            nome: nome.trim(),
-            score: score || 0,
-            accuracy: accuracy || 0,
-            level: level || 1,
-            xp: xp || 0,
-            coins: coins || 0,
-            streak: streak || 0,
-            time: time || 0,
-            subject: subject || 'geral'
-        });
-
-        await novoScore.save();
-
-        // Atualizar ou criar usuário
-        await User.findOneAndUpdate(
-            { username: nome.trim() },
-            {
-                $set: { lastPlayed: new Date() },
-                $max: { bestScore: score || 0 },
-                $max: { totalScore: score || 0 },
-                $max: { level: level || 1 },
-                $max: { xp: xp || 0 },
-                $inc: { gamesPlayed: 1 }
-            },
-            { upsert: true, new: true }
-        );
+        const score = sanitizeScorePayload(req.body);
+        const scores = await readScores();
+        scores.push(score);
+        await writeScores(sortRanking(scores).slice(0, 100));
 
         res.status(201).json({
             success: true,
-            message: '🏆 Score salvo com sucesso!',
-            data: {
-                id: novoScore._id,
-                score: novoScore.score,
-                accuracy: novoScore.accuracy
-            }
+            message: 'Score salvo localmente!',
+            data: score
         });
-
     } catch (err) {
-        console.error('Erro ao salvar score:', err.message);
-        res.status(500).json({
-            success: false,
-            error: 'Erro interno ao salvar score',
-            details: err.message
-        });
+        next(err);
     }
 });
 
-// GET RANKING
-app.get('/ranking', async (req, res) => {
+app.get('/ranking', async (req, res, next) => {
     try {
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
         const subject = req.query.subject;
+        let scores = await readScores();
 
-        let query = {};
         if (subject && subject !== 'geral') {
-            query.subject = subject;
+            scores = scores.filter(score => score.subject === subject);
         }
 
-        const ranking = await Score.find(query)
-            .sort({ score: -1, accuracy: -1, time: 1 })
-            .limit(limit)
-            .select('nome score accuracy level time subject createdAt');
-
+        const ranking = sortRanking(scores).slice(0, limit);
         res.json({
             success: true,
             total: ranking.length,
             data: ranking
         });
-
     } catch (err) {
-        console.error('Erro ao buscar ranking:', err.message);
-        res.status(500).json({
-            success: false,
-            error: 'Erro ao buscar ranking',
-            details: err.message
-        });
+        next(err);
     }
 });
 
-// GET QUESTIONS
-app.get('/questions/:subject', async (req, res) => {
+app.get('/stats', async (req, res, next) => {
     try {
-        const subject = req.params.subject;
-        const difficulty = req.query.difficulty;
-
-        let query = {};
-        if (subject !== 'geral') {
-            query.subject = subject;
-        }
-        if (difficulty) {
-            query.difficulty = difficulty;
-        }
-
-        const questions = await Question.find(query)
-            .select('-__v')
-            .sort({ createdAt: -1 });
-
-        res.json({
-            success: true,
-            total: questions.length,
-            data: questions
-        });
-
-    } catch (err) {
-        console.error('Erro ao buscar perguntas:', err.message);
-        res.status(500).json({
-            success: false,
-            error: 'Erro ao buscar perguntas',
-            details: err.message
-        });
-    }
-});
-
-// GET RANDOM QUESTIONS
-app.get('/random/:subject', async (req, res) => {
-    try {
-        const subject = req.params.subject;
-        const limit = Math.min(parseInt(req.query.limit) || 10, 50); // Máx 50
-        const difficulty = req.query.difficulty;
-
-        let match = {};
-        if (subject !== 'geral') {
-            match.subject = subject;
-        }
-        if (difficulty) {
-            match.difficulty = difficulty;
-        }
-
-        const questions = await Question.aggregate([
-            { $match: match },
-            { $sample: { size: limit } },
-            { $project: { __v: 0 } }
-        ]);
-
-        res.json({
-            success: true,
-            total: questions.length,
-            data: questions
-        });
-
-    } catch (err) {
-        console.error('Erro ao buscar perguntas aleatórias:', err.message);
-        res.status(500).json({
-            success: false,
-            error: 'Erro ao buscar perguntas aleatórias',
-            details: err.message
-        });
-    }
-});
-
-// ADD QUESTION
-app.post('/add-question', async (req, res) => {
-    try {
-        const questionData = req.body;
-
-        // Validação manual adicional
-        if (!questionData.question || !questionData.options || questionData.correct === undefined) {
-            return res.status(400).json({
-                success: false,
-                error: 'Pergunta, opções e resposta correta são obrigatórios'
-            });
-        }
-
-        const question = new Question(questionData);
-        await question.save();
-
-        res.status(201).json({
-            success: true,
-            message: '📚 Pergunta adicionada com sucesso!',
-            data: {
-                id: question._id,
-                subject: question.subject
-            }
-        });
-
-    } catch (err) {
-        console.error('Erro ao adicionar pergunta:', err.message);
-        
-        if (err.name === 'ValidationError') {
-            return res.status(400).json({
-                success: false,
-                error: 'Validação falhou',
-                details: Object.values(err.errors).map(e => e.message)
-            });
-        }
-
-        res.status(500).json({
-            success: false,
-            error: 'Erro ao adicionar pergunta',
-            details: err.message
-        });
-    }
-});
-
-// UPDATE QUESTION
-app.put('/update-question/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const updates = req.body;
-
-        const updated = await Question.findByIdAndUpdate(
-            id,
-            updates,
-            { 
-                new: true, 
-                runValidators: true,
-                context: 'query'
-            }
-        );
-
-        if (!updated) {
-            return res.status(404).json({
-                success: false,
-                error: 'Pergunta não encontrada'
-            });
-        }
-
-        res.json({
-            success: true,
-            message: '✅ Pergunta atualizada com sucesso!',
-            data: updated
-        });
-
-    } catch (err) {
-        console.error('Erro ao atualizar pergunta:', err.message);
-        res.status(500).json({
-            success: false,
-            error: 'Erro ao atualizar pergunta',
-            details: err.message
-        });
-    }
-});
-
-// DELETE QUESTION
-app.delete('/delete-question/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        const deleted = await Question.findByIdAndDelete(id);
-
-        if (!deleted) {
-            return res.status(404).json({
-                success: false,
-                error: 'Pergunta não encontrada'
-            });
-        }
-
-        res.json({
-            success: true,
-            message: '🗑️ Pergunta deletada com sucesso!',
-            data: { id }
-        });
-
-    } catch (err) {
-        console.error('Erro ao deletar pergunta:', err.message);
-        res.status(500).json({
-            success: false,
-            error: 'Erro ao deletar pergunta',
-            details: err.message
-        });
-    }
-});
-
-// GET STATS
-app.get('/stats', async (req, res) => {
-    try {
-        const totalQuestions = await Question.countDocuments();
-        const totalScores = await Score.countDocuments();
-        const totalUsers = await User.countDocuments();
-
-        const bestPlayer = await Score.findOne()
-            .sort({ score: -1 })
-            .select('nome score accuracy');
-
-        const avgScore = await Score.aggregate([
-            { $group: { _id: null, avg: { $avg: '$score' } } }
-        ]);
-
-        const subjectStats = await Question.aggregate([
-            { $group: { _id: '$subject', count: { $sum: 1 } } }
-        ]);
+        const scores = await readScores();
+        const questions = getAllQuestions();
+        const bestPlayer = sortRanking(scores)[0] || null;
+        const averageScore = scores.length
+            ? Math.round(scores.reduce((sum, score) => sum + (score.score || 0), 0) / scores.length)
+            : 0;
 
         res.json({
             success: true,
             data: {
-                totalQuestions,
-                totalScores,
-                totalUsers,
-                bestPlayer: bestPlayer || null,
-                averageScore: avgScore.length > 0 ? Math.round(avgScore[0].avg) : 0,
-                questionsBySubject: subjectStats.reduce((acc, item) => {
-                    acc[item._id] = item.count;
+                totalQuestions: questions.length,
+                totalScores: scores.length,
+                totalUsers: new Set(scores.map(score => score.nome)).size,
+                bestPlayer,
+                averageScore,
+                questionsBySubject: SUBJECTS.reduce((acc, subject) => {
+                    acc[subject] = (questionsBank[subject] || []).length;
                     return acc;
                 }, {})
             }
         });
-
     } catch (err) {
-        console.error('Erro ao buscar estatísticas:', err.message);
-        res.status(500).json({
-            success: false,
-            error: 'Erro ao buscar estatísticas',
-            details: err.message
-        });
+        next(err);
     }
 });
 
-// SEED QUESTIONS
-app.post('/seed', async (req, res) => {
+app.get('/user/:username', async (req, res, next) => {
     try {
-        const questions = [
-            {
-                subject: 'matematica',
-                difficulty: 'normal',
-                question: 'Quanto é 5 x 5?',
-                options: ['10', '15', '20', '25', '30'],
-                correct: 3,
-                explanation: '5 vezes 5 = 25'
-            },
-            {
-                subject: 'humanas',
-                difficulty: 'easy',
-                question: 'Quem descobriu o Brasil?',
-                options: [
-                    'Dom Pedro',
-                    'Pedro Álvares Cabral',
-                    'Tiradentes',
-                    'Getúlio Vargas',
-                    'Napoleão'
-                ],
-                correct: 1,
-                explanation: 'Pedro Álvares Cabral chegou ao Brasil em 1500.'
-            }
-        ];
+        const username = req.params.username;
+        const scores = (await readScores()).filter(score => score.nome === username);
 
-        const result = await Question.insertMany(questions);
-
-        res.json({
-            success: true,
-            message: `🔥 ${result.length} perguntas adicionadas com sucesso!`,
-            inserted: result.length
-        });
-
-    } catch (err) {
-        console.error('Erro ao seed perguntas:', err.message);
-        res.status(500).json({
-            success: false,
-            error: 'Erro ao adicionar perguntas seed',
-            details: err.message
-        });
-    }
-});
-
-// GET USER STATS
-app.get('/user/:username', async (req, res) => {
-    try {
-        const { username } = req.params;
-
-        const user = await User.findOne({ username })
-            .select('-__v');
-
-        if (!user) {
+        if (!scores.length) {
             return res.status(404).json({
                 success: false,
                 error: 'Usuário não encontrado'
             });
         }
 
-        const recentScores = await Score.find({ nome: username })
-            .sort({ createdAt: -1 })
-            .limit(5)
-            .select('score accuracy time createdAt');
+        const ranking = sortRanking(scores);
+        const best = ranking[0];
 
         res.json({
             success: true,
             data: {
-                user,
-                recentScores
+                user: {
+                    username,
+                    totalScore: scores.reduce((sum, score) => sum + (score.score || 0), 0),
+                    gamesPlayed: scores.length,
+                    bestScore: best.score,
+                    level: best.level,
+                    xp: best.xp,
+                    lastPlayed: scores[scores.length - 1].createdAt
+                },
+                recentScores: scores.slice(-5).reverse()
             }
         });
-
     } catch (err) {
-        console.error('Erro ao buscar usuário:', err.message);
-        res.status(500).json({
-            success: false,
-            error: 'Erro ao buscar usuário',
-            details: err.message
-        });
+        next(err);
     }
 });
 
-// ============================================
-// ERROR HANDLING
-// ============================================
-
-// 404 handler
 app.use((req, res) => {
     res.status(404).json({
         success: false,
@@ -689,49 +260,31 @@ app.use((req, res) => {
     });
 });
 
-// Global error handler
 app.use((err, req, res, next) => {
     console.error('Erro não tratado:', err);
     res.status(500).json({
         success: false,
         error: 'Erro interno do servidor',
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Tente novamente mais tarde'
+        message: err.message
     });
 });
-
-// ============================================
-// SERVER START
-// ============================================
 
 const server = app.listen(PORT, () => {
     console.log('=================================');
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
-    console.log(`🌐 http://localhost:${PORT}`);
-    console.log(`📡 API CyberQuiz v3.0 READY`);
+    console.log(`CyberQuiz rodando em http://localhost:${PORT}`);
+    console.log('Banco de dados: perguntas locais + ranking em JSON');
     console.log('=================================');
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('📡 SIGTERM recebido. Fechando servidor...');
+function shutdown(signal) {
+    console.log(`${signal} recebido. Fechando servidor...`);
     server.close(() => {
-        console.log('✅ Servidor fechado.');
-        mongoose.connection.close(() => {
-            console.log('✅ Conexão MongoDB fechada.');
-            process.exit(0);
-        });
+        console.log('Servidor fechado.');
+        process.exit(0);
     });
-});
+}
 
-process.on('SIGINT', () => {
-    console.log('📡 SIGINT recebido. Fechando servidor...');
-    server.close(() => {
-        console.log('✅ Servidor fechado.');
-        mongoose.connection.close(() => {
-            console.log('✅ Conexão MongoDB fechada.');
-            process.exit(0);
-        });
-    });
-});
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 module.exports = app;

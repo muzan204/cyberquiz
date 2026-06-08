@@ -1,138 +1,49 @@
 // ============================================
-// ENEM CyberQuiz - Script de Seed para MongoDB
+// ENEM CyberQuiz - verificador do banco local
 // ============================================
 
-require('dotenv').config();
-const mongoose = require('mongoose');
 const { questionsBank } = require('./questions.js');
 
-// Schema do Question
-const QuestionSchema = new mongoose.Schema({
-    subject: {
-        type: String,
-        required: true,
-        enum: ['linguagens', 'matematica', 'natureza', 'humanas']
-    },
-    difficulty: {
-        type: String,
-        enum: ['easy', 'normal', 'hard'],
-        default: 'normal'
-    },
-    question: {
-        type: String,
-        required: true
-    },
-    options: {
-        type: [String],
-        required: true,
-        validate: [arrayLimit, 'Pergunta deve ter entre 2 e 5 opções']
-    },
-    correct: {
-        type: Number,
-        required: true
-    },
-    explanation: {
-        type: String,
-        default: ''
-    },
-    id: Number,
-    createdAt: {
-        type: Date,
-        default: Date.now
-    }
+const subjects = Object.keys(questionsBank);
+const allQuestions = subjects.flatMap(subject => questionsBank[subject]);
+
+console.log('=================================');
+console.log('CyberQuiz usando perguntas locais');
+console.log('=================================');
+console.log(`Total de questões: ${allQuestions.length}`);
+
+console.log('\nQuestões por matéria:');
+subjects.forEach(subject => {
+    console.log(`- ${subject}: ${questionsBank[subject].length}`);
 });
 
-function arrayLimit(val) {
-    return val.length >= 2 && val.length <= 5;
+console.log('\nQuestões por dificuldade:');
+const difficultyStats = allQuestions.reduce((acc, question) => {
+    const difficulty = question.difficulty || 'normal';
+    acc[difficulty] = (acc[difficulty] || 0) + 1;
+    return acc;
+}, {});
+
+Object.entries(difficultyStats).forEach(([difficulty, total]) => {
+    console.log(`- ${difficulty}: ${total}`);
+});
+
+const invalidQuestions = allQuestions.filter(question => (
+    !question.question
+    || !Array.isArray(question.options)
+    || question.options.length < 2
+    || question.options.length > 5
+    || !Number.isInteger(question.correct)
+    || question.correct < 0
+    || question.correct >= question.options.length
+));
+
+if (invalidQuestions.length) {
+    console.log('\nQuestões com problema:');
+    invalidQuestions.forEach(question => {
+        console.log(`- ${question.subject || 'sem matéria'} #${question.id || 'sem id'}`);
+    });
+    process.exitCode = 1;
+} else {
+    console.log('\nTodas as perguntas estão válidas.');
 }
-
-const Question = mongoose.model('Question', QuestionSchema);
-
-// Função principal de seed
-async function seedDatabase() {
-    console.log('🚀 Iniciando seed do banco de dados...');
-    
-    try {
-        // Conectar ao MongoDB
-        await mongoose.connect(process.env.MONGO_URI, {
-            serverSelectionTimeoutMS: 5000
-        });
-        console.log('✅ MongoDB conectado com sucesso!');
-
-        // Limpar banco de dados
-        console.log('🗑️ Limpando questões existentes...');
-        await Question.deleteMany({});
-        console.log('✅ Questões antigas removidas');
-
-        // Preparar todas as questões
-        const allQuestions = [
-            ...questionsBank.linguagens,
-            ...questionsBank.matematica,
-            ...questionsBank.natureza,
-            ...questionsBank.humanas
-        ];
-
-        console.log(`📚 Total de questões para inserir: ${allQuestions.length}`);
-
-        // Inserir questões
-        await Question.insertMany(allQuestions);
-        console.log('✅ Todas as questões foram inseridas com sucesso!');
-
-        // Estatísticas
-        console.log('\n📊 ESTATÍSTICAS DO BANCO DE DADOS:');
-        console.log('=====================================');
-        
-        const totalQuestions = await Question.countDocuments();
-        console.log(`📝 Total de questões: ${totalQuestions}`);
-
-        const stats = await Question.aggregate([
-            { $group: { _id: '$subject', count: { $sum: 1 } } },
-            { $sort: { _id: 1 } }
-        ]);
-
-        console.log('\n📚 Questões por matéria:');
-        stats.forEach(stat => {
-            const subjectNames = {
-                'linguagens': 'Linguagens',
-                'matematica': 'Matemática',
-                'natureza': 'Ciências da Natureza',
-                'humanas': 'Ciências Humanas'
-            };
-            console.log(`   ${subjectNames[stat._id] || stat._id}: ${stat.count} questões`);
-        });
-
-        const difficultyStats = await Question.aggregate([
-            { $group: { _id: '$difficulty', count: { $sum: 1 } } },
-            { $sort: { _id: 1 } }
-        ]);
-
-        console.log('\n⚡ Questões por dificuldade:');
-        difficultyStats.forEach(stat => {
-            const difficultyNames = {
-                'easy': 'Fácil',
-                'normal': 'Normal',
-                'hard': 'Difícil'
-            };
-            console.log(`   ${difficultyNames[stat._id] || stat._id}: ${stat.count} questões`);
-        });
-
-        console.log('\n=====================================');
-        console.log('🎉 Seed concluído com sucesso!');
-        console.log('=====================================\n');
-
-    } catch (error) {
-        console.error('❌ ERRO durante o seed:', error.message);
-        console.error('\nPossíveis soluções:');
-        console.log('1. Verifique se sua conexão MongoDB está correta no arquivo .env');
-        console.log('2. Certifique-se de que o MongoDB Atlas está acessível');
-        console.log('3. Verifique se as credenciais estão corretas');
-        process.exit(1);
-    } finally {
-        await mongoose.connection.close();
-        console.log('🔌 Conexão MongoDB fechada');
-        process.exit(0);
-    }
-}
-
-// Executar seed
-seedDatabase();

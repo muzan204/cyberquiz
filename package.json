@@ -1,13 +1,12 @@
 {
   "name": "cyberquiz",
   "version": "3.0.0",
-  "description": "ENEM CyberQuiz - Plataforma Gamificada de Estudos com tema Cyberpunk",
+  "description": "ENEM CyberQuiz - Plataforma gamificada de estudos com backend local",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "dev": "node server.js",
     "server": "node server.js",
-    "client": "live-server --port=8080",
     "seed": "node seed.js",
     "test": "echo \"No tests configured yet\"",
     "lint": "eslint .",
@@ -17,7 +16,7 @@
     "enem",
     "quiz",
     "cyberpunk",
-    "mongodb",
+    "local-json",
     "education",
     "nodejs",
     "gamification",
@@ -39,12 +38,8 @@
   },
   "homepage": "https://github.com/muzan204/cyberquiz#readme",
   "dependencies": {
-    "concurrently": "^9.2.1",
     "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "live-server": "^1.2.2",
-    "mongoose": "^9.6.2"
+    "express": "^5.2.1"
   },
   "devDependencies": {
     "eslint": "^9.0.0",

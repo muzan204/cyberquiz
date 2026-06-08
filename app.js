@@ -3,7 +3,9 @@
 // Frontend melhorado com recursos avançados
 // ============================================
 
-const API = 'http://localhost:3000';
+// Base da API: no modo local, tenta reaproveitar a mesma origem do site
+// (se você rodar backend em outra porta, o fetch vai acompanhar essa porta).
+const API = `${window.location.origin}`;
 
 // ============================================
 // AUDIO SYSTEM
@@ -219,6 +221,7 @@ class CyberQuiz {
         // TIMER
         // ==================================
         this.timerInterval = null;
+        this.autoSaveInterval = null;
         this.elapsedTime = 0;
         this.questionTimeLimit = 60; // seconds per question
 
@@ -232,6 +235,7 @@ class CyberQuiz {
         // PLAYER
         // ==================================
         this.playerName = localStorage.getItem('cyberquiz-playerName') || 'Player';
+        this.currentQuestionOptions = [];
 
         // ==================================
         // UI ELEMENTS CACHE
@@ -258,8 +262,7 @@ class CyberQuiz {
         this.renderRanking();
         this.renderAchievements();
 
-        // Auto-save every 30 seconds
-        setInterval(() => this.saveProgress(), 30000);
+        this.autoSaveInterval = setInterval(() => this.saveProgress(), 30000);
 
         // Resume audio context on first interaction
         document.addEventListener('click', () => {
@@ -421,7 +424,7 @@ class CyberQuiz {
         // Update UI
         this.ui.questionNumber.textContent = `QUESTÃO ${this.currentQuestionIndex + 1}`;
         this.ui.subjectTag.textContent = question.subject || this.currentSubject;
-        this.ui.questionText.innerHTML = this.formatQuestionText(question.question);
+        this.renderMultilineText(this.ui.questionText, question.question);
         this.ui.currentQuestion.textContent = this.currentQuestionIndex + 1;
         this.ui.totalQuestions.textContent = this.questions.length;
 
@@ -430,27 +433,31 @@ class CyberQuiz {
         this.ui.progressFill.style.width = `${progress}%`;
 
         // Options
-        this.ui.optionsContainer.innerHTML = '';
-        const letters = ['A', 'B', 'C', 'D', 'E'];
+        this.clearElement(this.ui.optionsContainer);
 
-        // Shuffle options but track correct answer
-        const shuffledOptions = this.shuffleArray([...question.options]);
-        let newCorrectIndex = question.options.indexOf(question.options[question.correct]);
-        
-        // Store original correct answer text
-        const correctAnswerText = question.options[question.correct];
-        // Find new position of correct answer
-        const newCorrectPosition = shuffledOptions.indexOf(correctAnswerText);
+        const options = question.options || [];
+        const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+
+        // Shuffle options but keep correct answer in sync
+        const shuffledOptions = this.shuffleArray(
+            options.map((text, originalIndex) => ({ text, originalIndex }))
+        );
+        const newCorrectPosition = shuffledOptions.findIndex(option => option.originalIndex === question.correct);
+        this.currentQuestionOptions = shuffledOptions;
 
         shuffledOptions.forEach((option, index) => {
             const btn = document.createElement('button');
             btn.className = 'option-btn';
             btn.setAttribute('role', 'button');
-            btn.setAttribute('aria-label', `Opção ${letters[index]}: ${option}`);
-            btn.innerHTML = `
-                <span class="option-letter">${letters[index]}</span>
-                <span class="option-text">${option}</span>
-            `;
+
+            const letter = letters[index] || String(index + 1);
+            btn.setAttribute('aria-label', `Opção ${letter}: ${option.text}`);
+
+            btn.append(
+                this.createElement('span', 'option-letter', letter),
+                this.createElement('span', 'option-text', option.text)
+            );
+
             btn.addEventListener('click', () => this.selectAnswer(index, newCorrectPosition));
             this.ui.optionsContainer.appendChild(btn);
         });
@@ -468,13 +475,21 @@ class CyberQuiz {
         }
     }
 
-    formatQuestionText(text) {
-        // Convert line breaks to <br> and preserve formatting
-        return text
-            .replace(/\n\n/g, '</p><p style="margin: 10px 0;">')
-            .replace(/\n/g, '<br>')
-            .replace(/"/g, '"')
-            .replace(/"/g, '"');
+    renderMultilineText(container, text = '') {
+        this.clearElement(container);
+
+        String(text).split(/\n{2,}/).forEach((paragraph, paragraphIndex) => {
+            if (paragraphIndex > 0) {
+                container.appendChild(document.createElement('br'));
+            }
+
+            paragraph.split('\n').forEach((line, lineIndex) => {
+                if (lineIndex > 0) {
+                    container.appendChild(document.createElement('br'));
+                }
+                container.appendChild(document.createTextNode(line));
+            });
+        });
     }
 
     // ==================================
@@ -496,11 +511,15 @@ class CyberQuiz {
         });
 
         const isCorrect = selectedIndex === correctIndex;
+        const selectedOption = this.currentQuestionOptions[selectedIndex];
+        const correctOption = this.currentQuestionOptions[correctIndex];
 
         this.userAnswers.push({
             questionIndex: this.currentQuestionIndex,
             selectedIndex,
             correctIndex,
+            selectedText: selectedOption?.text || '',
+            correctText: correctOption?.text || '',
             isCorrect,
             responseTime
         });
@@ -619,6 +638,7 @@ class CyberQuiz {
 
     finishQuiz() {
         this.stopTimer();
+        this.incrementTotalGames();
         this.showScreen('results-screen');
         this.displayResults();
         this.saveScore();
@@ -672,26 +692,23 @@ class CyberQuiz {
             if (answer.isCorrect) subjectStats[subject].correct++;
         });
 
-        let html = '<h3 style="margin-bottom: 15px; color: var(--neon-blue);">📊 DESEMPENHO POR MATÉRIA</h3>';
+        this.clearElement(breakdown);
+        breakdown.appendChild(this.createElement('h3', 'section-heading', '📊 DESEMPENHO POR MATÉRIA'));
 
         Object.entries(subjectStats).forEach(([subject, stats]) => {
             const percentage = Math.round((stats.correct / stats.total) * 100);
-            const color = percentage >= 70 ? 'var(--neon-green)' : percentage >= 40 ? 'var(--neon-yellow)' : 'var(--neon-pink)';
+            const tone = percentage >= 70 ? 'good' : percentage >= 40 ? 'warn' : 'bad';
+            const item = this.createElement('div', `breakdown-item breakdown-${tone}`);
+            const meter = this.createElement('div', 'breakdown-meter');
+            const bar = this.createElement('div', 'breakdown-bar');
+            const fill = this.createElement('div', 'breakdown-fill');
 
-            html += `
-                <div class="breakdown-item">
-                    <span class="breakdown-subject">${subject}</span>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <div class="breakdown-bar">
-                            <div class="breakdown-fill" style="width: ${percentage}%; background: ${color};"></div>
-                        </div>
-                        <span class="breakdown-score" style="color: ${color};">${stats.correct}/${stats.total} (${percentage}%)</span>
-                    </div>
-                </div>
-            `;
+            fill.style.width = `${percentage}%`;
+            bar.appendChild(fill);
+            meter.append(bar, this.createElement('span', 'breakdown-score', `${stats.correct}/${stats.total} (${percentage}%)`));
+            item.append(this.createElement('span', 'breakdown-subject', subject), meter);
+            breakdown.appendChild(item);
         });
-
-        breakdown.innerHTML = html;
     }
 
     setTextContent(id, text) {
@@ -734,28 +751,41 @@ class CyberQuiz {
     }
 
     saveProgress() {
+        const previousSave = this.getSavedProgress();
         const saveData = {
             xp: this.xp,
             level: this.level,
             coins: this.coins,
             playerName: this.playerName,
-            totalGames: (parseInt(localStorage.getItem('cyberquiz-totalGames')) || 0) + 1
+            totalGames: previousSave.totalGames || 0,
+            updatedAt: new Date().toISOString()
         };
         localStorage.setItem('cyberquiz-save', JSON.stringify(saveData));
     }
 
+    getSavedProgress() {
+        try {
+            return JSON.parse(localStorage.getItem('cyberquiz-save') || '{}');
+        } catch (e) {
+            return {};
+        }
+    }
+
+    incrementTotalGames() {
+        const previousSave = this.getSavedProgress();
+        localStorage.setItem('cyberquiz-save', JSON.stringify({
+            ...previousSave,
+            totalGames: (previousSave.totalGames || 0) + 1
+        }));
+    }
+
     loadProgress() {
-        const save = localStorage.getItem('cyberquiz-save');
-        if (save) {
-            try {
-                const data = JSON.parse(save);
-                this.xp = data.xp || 0;
-                this.level = data.level || 1;
-                this.coins = data.coins || 0;
-                this.playerName = data.playerName || 'Player';
-            } catch (e) {
-                console.warn('Erro ao carregar progresso:', e);
-            }
+        const data = this.getSavedProgress();
+        if (Object.keys(data).length) {
+            this.xp = data.xp || 0;
+            this.level = data.level || 1;
+            this.coins = data.coins || 0;
+            this.playerName = data.playerName || 'Player';
         }
     }
 
@@ -771,36 +801,31 @@ class CyberQuiz {
 
             const container = document.getElementById('ranking-container');
             if (!container) return;
+            this.clearElement(container);
 
             if (ranking.length === 0) {
-                container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 20px;">Nenhum score registrado ainda. Seja o primeiro! 🏆</p>';
+                container.appendChild(this.createElement('p', 'empty-state', 'Nenhum score registrado ainda. Seja o primeiro! 🏆'));
                 return;
             }
 
-            container.innerHTML = ranking.map((player, index) => {
+            ranking.forEach((player, index) => {
                 const medals = ['🥇', '🥈', '🥉'];
                 const medal = index < 3 ? medals[index] : `#${index + 1}`;
                 const isCurrentUser = player.nome === this.playerName;
+                const item = this.createElement('div', `ranking-item ${isCurrentUser ? 'current-user' : ''}`);
 
-                return `
-                    <div class="ranking-item ${isCurrentUser ? 'current-user' : ''}">
-                        <span class="ranking-position">${medal}</span>
-                        <span class="ranking-name">${this.escapeHtml(player.nome)}</span>
-                        <span class="ranking-score">${player.score}</span>
-                        <span class="ranking-accuracy">${player.accuracy || 0}%</span>
-                    </div>
-                `;
-            }).join('');
+                item.append(
+                    this.createElement('span', 'ranking-position', medal),
+                    this.createElement('span', 'ranking-name', player.nome || 'Player'),
+                    this.createElement('span', 'ranking-score', String(player.score || 0)),
+                    this.createElement('span', 'ranking-accuracy', `${player.accuracy || 0}%`)
+                );
+                container.appendChild(item);
+            });
 
         } catch (err) {
             console.error('Erro ao carregar ranking:', err);
         }
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
     }
 
     // ==================================
@@ -812,33 +837,37 @@ class CyberQuiz {
         if (!container) return;
 
         const allAchievements = this.achievements.getAll();
+        this.clearElement(container);
+        container.appendChild(this.createElement('h3', 'section-heading', '🏆 CONQUISTAS'));
 
-        container.innerHTML = `
-            <h3 style="color: var(--neon-blue); margin-bottom: 15px;">🏆 CONQUISTAS</h3>
-            <div class="achievements-grid">
-                ${allAchievements.map(a => `
-                    <div class="achievement-item ${a.unlocked ? 'unlocked' : 'locked'}" 
-                         title="${a.desc}">
-                        <span class="achievement-icon">${a.icon}</span>
-                        <span class="achievement-name">${a.name}</span>
-                    </div>
-                `).join('')}
-            </div>
-        `;
+        const grid = this.createElement('div', 'achievements-grid');
+        allAchievements.forEach(achievement => {
+            const item = this.createElement(
+                'div',
+                `achievement-item ${achievement.unlocked ? 'unlocked' : 'locked'}`
+            );
+            item.title = achievement.desc;
+            item.append(
+                this.createElement('span', 'achievement-icon', achievement.icon),
+                this.createElement('span', 'achievement-name', achievement.name)
+            );
+            grid.appendChild(item);
+        });
+        container.appendChild(grid);
     }
 
     showAchievementPopup(achievement) {
         const popup = document.createElement('div');
         popup.className = 'achievement-popup';
-        popup.innerHTML = `
-            <div class="achievement-popup-content">
-                <span class="achievement-popup-icon">${achievement.icon}</span>
-                <div class="achievement-popup-text">
-                    <h4>🏆 CONQUISTA DESBLOQUEADA!</h4>
-                    <p>${achievement.name}</p>
-                </div>
-            </div>
-        `;
+        const content = this.createElement('div', 'achievement-popup-content');
+        const text = this.createElement('div', 'achievement-popup-text');
+
+        text.append(
+            this.createElement('h4', '', '🏆 CONQUISTA DESBLOQUEADA!'),
+            this.createElement('p', '', achievement.name)
+        );
+        content.append(this.createElement('span', 'achievement-popup-icon', achievement.icon), text);
+        popup.appendChild(content);
 
         document.body.appendChild(popup);
 
@@ -857,6 +886,7 @@ class CyberQuiz {
     // ==================================
 
     startTimer() {
+        this.stopTimer();
         this.elapsedTime = 0;
         this.updateTimerDisplay();
 
@@ -935,7 +965,8 @@ class CyberQuiz {
     updateLivesDisplay() {
         const livesContainer = document.getElementById('lives-display');
         if (livesContainer) {
-            livesContainer.innerHTML = '❤️'.repeat(this.lives) + '🖤'.repeat(Math.max(0, this.maxLives - this.lives));
+            const value = livesContainer.querySelector('.stat-value') || livesContainer;
+            value.textContent = '❤️'.repeat(this.lives) + '🖤'.repeat(Math.max(0, this.maxLives - this.lives));
         }
     }
 
@@ -962,41 +993,53 @@ class CyberQuiz {
         if (!list) return;
 
         const letters = ['A', 'B', 'C', 'D', 'E'];
+        this.clearElement(list);
 
-        list.innerHTML = this.userAnswers.map((answer, index) => {
+        this.userAnswers.forEach((answer, index) => {
             const question = this.questions[answer.questionIndex];
-            if (!question) return '';
+            if (!question) return;
 
             const statusClass = answer.isCorrect ? 'correct' : 'wrong';
             const statusIcon = answer.isCorrect ? '✅' : '❌';
             const statusText = answer.isCorrect ? 'Correta' : 'Incorreta';
+            const selectedLetter = letters[answer.selectedIndex] || String(answer.selectedIndex + 1);
+            const correctLetter = letters[answer.correctIndex] || String(answer.correctIndex + 1);
+            const item = this.createElement('div', `review-item ${statusClass}`);
+            const header = this.createElement('div', 'review-header');
+            const questionText = this.createElement('p', 'review-question-text');
+            const answers = this.createElement('div', 'review-answers');
 
-            return `
-                <div class="review-item ${statusClass}">
-                    <div class="review-header">
-                        <span class="review-status">${statusIcon} ${statusText}</span>
-                        <span class="review-question-num">QUESTÃO ${index + 1}</span>
-                        <span class="review-time">⏱ ${answer.responseTime?.toFixed(1) || '0'}s</span>
-                    </div>
-                    <p class="review-question-text">${this.escapeHtml(question.question)}</p>
-                    <div class="review-answers">
-                        <div class="review-your-answer">
-                            <strong>Sua resposta:</strong> ${letters[answer.selectedIndex]} - ${this.escapeHtml(question.options[answer.selectedIndex])}
-                        </div>
-                        ${!answer.isCorrect ? `
-                            <div class="review-correct-answer">
-                                <strong>Resposta correta:</strong> ${letters[answer.correctIndex]} - ${this.escapeHtml(question.options[answer.correctIndex])}
-                            </div>
-                        ` : ''}
-                    </div>
-                    ${question.explanation ? `
-                        <div class="review-explanation">
-                            <strong>💡 Explicação:</strong> ${this.escapeHtml(question.explanation)}
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }).join('');
+            header.append(
+                this.createElement('span', 'review-status', `${statusIcon} ${statusText}`),
+                this.createElement('span', 'review-question-num', `QUESTÃO ${index + 1}`),
+                this.createElement('span', 'review-time', `⏱ ${answer.responseTime?.toFixed(1) || '0'}s`)
+            );
+
+            this.renderMultilineText(questionText, question.question);
+            answers.appendChild(this.createElement(
+                'div',
+                'review-your-answer',
+                `Sua resposta: ${selectedLetter} - ${answer.selectedText}`
+            ));
+
+            answers.appendChild(this.createElement(
+                'div',
+                'review-correct-answer',
+                `Resposta correta: ${correctLetter} - ${answer.correctText}`
+            ));
+
+
+            item.append(header, questionText, answers);
+
+            if (question.explanation) {
+                const explanation = this.createElement('div', 'review-explanation');
+                explanation.appendChild(this.createElement('strong', '', '💡 Explicação: '));
+                explanation.appendChild(document.createTextNode(question.explanation));
+                item.appendChild(explanation);
+            }
+
+            list.appendChild(item);
+        });
     }
 
     // ==================================
@@ -1027,10 +1070,10 @@ class CyberQuiz {
             loading = document.createElement('div');
             loading.id = 'loading';
             loading.className = 'loading-overlay';
-            loading.innerHTML = `
-                <div class="loading-spinner"></div>
-                <p style="color: var(--neon-blue); margin-top: 20px;">CARREGANDO...</p>
-            `;
+            loading.append(
+                this.createElement('div', 'loading-spinner'),
+                this.createElement('p', 'loading-text', 'CARREGANDO...')
+            );
             document.body.appendChild(loading);
         }
 
@@ -1085,14 +1128,24 @@ class CyberQuiz {
         for (let i = 0; i < particleCount; i++) {
             const particle = document.createElement('div');
             particle.className = 'particle';
-            particle.style.cssText = `
-                left: ${Math.random() * 100}%;
-                animation-delay: ${Math.random() * 5}s;
-                animation-duration: ${3 + Math.random() * 4}s;
-                opacity: ${0.3 + Math.random() * 0.4};
-            `;
+            particle.style.left = `${Math.random() * 100}%`;
+            particle.style.animationDelay = `${Math.random() * 5}s`;
+            particle.style.animationDuration = `${3 + Math.random() * 4}s`;
+            particle.style.opacity = String(0.3 + Math.random() * 0.4);
             container.appendChild(particle);
         }
+    }
+
+    createElement(tagName, className = '', text = '') {
+        const element = document.createElement(tagName);
+        if (className) element.className = className;
+        if (text !== '') element.textContent = text;
+        return element;
+    }
+
+    clearElement(element) {
+        if (!element) return;
+        element.replaceChildren();
     }
 
     shuffleArray(array) {
