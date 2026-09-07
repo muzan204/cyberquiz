@@ -1,14 +1,14 @@
 {
   "name": "cyberquiz",
-  "version": "3.0.0",
-  "description": "ENEM CyberQuiz - Plataforma gamificada de estudos com backend local",
+  "version": "3.1.0",
+  "description": "ENEM CyberQuiz - Plataforma gamificada de estudos com backend local (sem banco de dados externo)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js",
+    "dev": "node --watch server.js",
     "server": "node server.js",
     "seed": "node seed.js",
-    "test": "echo \"No tests configured yet\"",
+    "test": "echo \"Nenhum teste automatizado configurado ainda\"",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{js,json,md}\""
   },
@@ -25,13 +25,12 @@
   ],
   "author": {
     "name": "Gustavo Belchior",
-    "email": "contato@exemplo.com",
-    "url": "https://github.com/seu-usuario"
+    "url": "https://github.com/muzan204"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/muzan204/cyberquiz.git"
+    "url": "git+https://github.com/muzan204/cyberquiz.git"
   },
   "bugs": {
     "url": "https://github.com/muzan204/cyberquiz/issues"
